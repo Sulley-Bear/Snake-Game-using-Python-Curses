@@ -87,7 +87,8 @@ while True:
     else:
         snake_position.insert(0, list(snake_head))
         last = snake_position.pop()
-        win.addch(last[0], last[1], ' ')
+        if last != apple_position:
+            win.addch(last[0], last[1], ' ')
 
     # display snake
     win.addch(snake_position[0][0], snake_position[0][1], '#')
