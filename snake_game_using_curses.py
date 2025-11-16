@@ -2,6 +2,13 @@ import random
 import curses
 import time
 
+# CUSTOM - SETTINGS
+import os; os.system("cls" if os.name == "nt" else "clear")
+blnBorderless = True        # Default = False
+blnShrinkingSnake = True    # Default = False
+strSnakeBody = "█"          # Default = "#"
+intMillisecondDelay = 100   # Default = 100
+
 #initialize screen
 sc = curses.initscr()
 h, w = sc.getmaxyx()
@@ -11,9 +18,9 @@ win.keypad(1)
 curses.curs_set(0)
 
 # Initial Snake and Apple position
-snake_head = [10,15]
-snake_position = [[15,10],[14,10],[13,10]]
-apple_position = [20,20]
+snake_head = [10%h,15%w]
+snake_position = [[15%h,10%w],[14%h,10%w],[13%h,10%w]]
+apple_position = [int(.2*h),int(.2*w)]
 score = 0
 
 # display apple
@@ -41,10 +48,9 @@ def collision_with_self(snake_position):
     else:
         return 0
 
-a = []
 while True:
     win.border(0)
-    win.timeout(100)
+    win.timeout(intMillisecondDelay)  # CUSTOM (changed fixed 100 ms to variable specified integer)
 
     next_key = win.getch()
 
@@ -62,6 +68,8 @@ while True:
         button_direction = 3
     elif key == curses.KEY_DOWN and prev_button_direction != 3:
         button_direction = 2
+    elif key == 27:   # CUSTOM - End game on the ESC escape key
+        break
     else:
         pass
 
@@ -77,30 +85,39 @@ while True:
     elif button_direction == 3:
         snake_head[0] -= 1
 
+    # CUSTOM - Borderless
+    if blnBorderless and collision_with_boundaries(snake_head) == 1:
+        # h = number of vertical pixels, w = number of horizontal pixels, zero-indexing makes the head position possible from [0...h-1] and [0...w-1]
+        snake_head[0] = (snake_head[0] % (h-2) - 1) % (h-2) + 1   # Since the boundary borders are in positions 0 and (h or w)-1, the snake is only permitted in the range [1...(h or w)-2]
+        snake_head[1] = (snake_head[1] % (w-2) - 1) % (w-2) + 1   # Genius code: The pair of modulo functions shift an out-of-bounds position back in bounds, at the opposite end. If the axis was already in bounds, it stays in the same position.
+    
     # Increase Snake length on eating apple
     if snake_head == apple_position:
         apple_position, score = collision_with_apple(score)
         snake_position.insert(0, list(snake_head))
-        a.append(apple_position)
         win.addch(apple_position[0], apple_position[1], curses.ACS_DIAMOND)
 
     else:
         snake_position.insert(0, list(snake_head))
         last = snake_position.pop()
-        if last != apple_position:
-            win.addch(last[0], last[1], ' ')
+        if last != apple_position:          # CUSTOM: Patches the invisible apple glitch
+          win.addch(last[0], last[1], ' ')
+    
+    # CUSTOM - Shrinking Snake
+    if blnShrinkingSnake and collision_with_self(snake_position) == 1:
+      snake_position.pop(0)                 # Removes head from the collision position, thus shrinking its length
+      snake_head[0] = snake_position[0][0]  # Return head to previous vertical position
+      snake_head[1] = snake_position[0][1]  # Return head to previous horizontal position
+      score -= 1                            # Since the length has been decreased by 1, so does the score
 
     # display snake
-    win.addch(snake_position[0][0], snake_position[0][1], '#')
+    win.addch(snake_position[0][0], snake_position[0][1], strSnakeBody)   # CUSTOM Snake Body Character
 
     # On collision kill the snake
     if collision_with_boundaries(snake_head) == 1 or collision_with_self(snake_position) == 1:
         break
 
-
-sc.addstr(10, 30, 'Your Score is:  '+str(score))
+sc.addstr(h//2, w//2 - 9, 'Your Score is:  '+str(score))    ## Shifted score position to be centred
 sc.refresh()
 time.sleep(2)
 curses.endwin()
-print(a)
-print(w,h)
